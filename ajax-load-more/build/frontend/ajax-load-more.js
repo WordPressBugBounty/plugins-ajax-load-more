@@ -10986,7 +10986,7 @@ function addSEOAttributes(alm, element, pagenum) {
   var _alm_localize = alm_localize,
     _alm_localize$retain_ = _alm_localize.retain_querystring,
     retain_querystring = _alm_localize$retain_ === void 0 ? true : _alm_localize$retain_;
-  var querystring = retain_querystring ? window.location.search : '';
+  var querystring = retain_querystring || alm.init ? window.location.search : '';
   pagenum = !skipOffset ? getSEOPageNum(addons === null || addons === void 0 ? void 0 : addons.seo_offset, pagenum) : pagenum;
   element.classList.add('alm-seo');
   element.dataset.page = pagenum;
@@ -11615,9 +11615,13 @@ function addSinglePostsAttributes(alm, element) {
   }
   var page = alm.page,
     addons = alm.addons;
+  var _alm_localize = alm_localize,
+    _alm_localize$retain_ = _alm_localize.retain_querystring,
+    retain_querystring = _alm_localize$retain_ === void 0 ? true : _alm_localize$retain_;
+  var querystring = retain_querystring ? window.location.search : '';
   element.setAttribute('class', "alm-single-post post-".concat(addons.single_post_id));
   element.dataset.id = addons.single_post_id;
-  element.dataset.url = addons.single_post_permalink;
+  element.dataset.url = "".concat(addons.single_post_permalink).concat(querystring);
   element.dataset.page = addons.single_post_target ? parseInt(page) + 1 : page;
   element.dataset.title = addons.single_post_title;
   return element;
@@ -13123,6 +13127,8 @@ function almSetFilters(speed, data, type, element) {
         key = key.replace(/\W+/g, '-').replace(/([a-z\d])([A-Z])/g, '$1-$2').toLowerCase();
         listing.setAttribute('data-' + key, value);
       }
+      almCleanFilterData(listing, data); // Cleanup Filters data
+
       // Fade ALM back (Filters only)
       almFadeIn(element, speed);
       break;
@@ -13145,12 +13151,40 @@ function almSetFilters(speed, data, type, element) {
   }
   switch (type) {
     case 'filter':
-      // Filters Complete (not the add-on)
+      // Filters Complete (not the add-on).
       if (typeof almFilterComplete === 'function') {
-        // Standard Filtering
         almFilterComplete();
       }
       break;
+  }
+}
+
+/**
+ * Clean up Taxonomy and Meta Query data from filters.
+ *
+ * @param {HTMLElement} listing The alm-listing container.
+ * @param {Object}      data    The data object containing filter parameters.
+ */
+function almCleanFilterData(listing, data) {
+  // If taxonomy is empty, remove taxonomy-related data attributes.
+  if (data && data.taxonomy === '') {
+    delete listing.dataset.taxonomy;
+    if (listing.dataset.taxonomyTerms) {
+      delete listing.dataset.taxonomy;
+      delete listing.dataset.taxonomyTerms;
+      delete listing.dataset.taxonomyOperator;
+      delete listing.dataset.taxonomyIncludeChildren;
+    }
+  }
+
+  // If metaKey is empty, remove meta-related data attributes.
+  if (data && data.metaKey === '') {
+    delete listing.dataset.metaKey;
+    if (listing.dataset.metaValue) {
+      delete listing.dataset.metaValue;
+      delete listing.dataset.metaType;
+      delete listing.dataset.metaCompare;
+    }
   }
 }
 ;// CONCATENATED MODULE: ./src/frontend/js/modules/masonry.js
@@ -13780,8 +13814,10 @@ var isBlockEditor = document.body.classList.contains('wp-admin');
     alm.btnWrap[alm.btnWrap.length - 1].style.visibility = 'visible'; // Get last element (used for nesting)
     alm.trigger = alm.btnWrap[alm.btnWrap.length - 1];
     alm.button = ((_alm5 = alm) === null || _alm5 === void 0 || (_alm5 = _alm5.trigger) === null || _alm5 === void 0 ? void 0 : _alm5.querySelector('button.alm-load-more-btn')) || null;
+
+    // Button Labels.
     alm.button_labels = {
-      "default": purify.sanitize((_alm6 = alm) === null || _alm6 === void 0 || (_alm6 = _alm6.listing) === null || _alm6 === void 0 || (_alm6 = _alm6.dataset) === null || _alm6 === void 0 ? void 0 : _alm6.buttonLabel) || ((_alm_localize2 = alm_localize) === null || _alm_localize2 === void 0 ? void 0 : _alm_localize2.button_label),
+      "default": purify.sanitize((_alm6 = alm) === null || _alm6 === void 0 || (_alm6 = _alm6.listing) === null || _alm6 === void 0 || (_alm6 = _alm6.dataset) === null || _alm6 === void 0 ? void 0 : _alm6.buttonLabel) || purify.sanitize((_alm_localize2 = alm_localize) === null || _alm_localize2 === void 0 ? void 0 : _alm_localize2.button_label),
       loading: purify.sanitize((_alm7 = alm) === null || _alm7 === void 0 || (_alm7 = _alm7.listing) === null || _alm7 === void 0 || (_alm7 = _alm7.dataset) === null || _alm7 === void 0 ? void 0 : _alm7.buttonLoadingLabel) || null,
       done: purify.sanitize((_alm8 = alm) === null || _alm8 === void 0 || (_alm8 = _alm8.listing) === null || _alm8 === void 0 || (_alm8 = _alm8.dataset) === null || _alm8 === void 0 ? void 0 : _alm8.buttonDoneLabel) || null
     };
@@ -14091,7 +14127,6 @@ var isBlockEditor = document.body.classList.contains('wp-admin');
               }
 
               // Make API request.
-              // HTTP request via axios.
               _context2.next = 6;
               return lib_axios.get(url, {
                 params: params
@@ -14190,6 +14225,7 @@ var isBlockEditor = document.body.classList.contains('wp-admin');
         };
         alm.AjaxLoadMore.render(obj);
       })["catch"](function (error) {
+        // Error
         alm.AjaxLoadMore.error(error);
       });
     };
@@ -14754,6 +14790,7 @@ var isBlockEditor = document.body.classList.contains('wp-admin');
               alm.addons.single_post_init = false;
               return data;
             })["catch"](function (error) {
+              // Error
               alm.AjaxLoadMore.error(error);
               alm.fetchingPreviousPost = false;
             });
@@ -15325,8 +15362,7 @@ var isBlockEditor = document.body.classList.contains('wp-admin');
      * @param {string} error The error message.
      * @since 2.6.0
      */
-    alm.AjaxLoadMore.error = function () {
-      var error = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+    alm.AjaxLoadMore.error = function (error) {
       console.error('Ajax Load More: There was an error with the Ajax request.', error); //eslint-disable-line no-console
       alm.loading = false;
       if (!alm.addons.paging) {
